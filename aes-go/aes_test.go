@@ -1,7 +1,9 @@
 package aesgo
 
 import (
+	"encoding/hex"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/mario-areias/aes-go/key"
@@ -59,6 +61,8 @@ func TestEncryptBlock(t *testing.T) {
 			output := aes.EncryptBlock(test.input)
 
 			if output != test.expected {
+				a := convertMatrixToArray(output)
+				fmt.Printf("Got: %02x\n", a)
 				fmt.Printf("Got: %02x\n", output)
 				fmt.Printf("Expected: %02x\n", test.expected)
 
@@ -66,5 +70,69 @@ func TestEncryptBlock(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestPadding(t *testing.T) {
+	tests := []struct {
+		name  string
+		block []byte
+
+		expected []byte
+	}{
+		{
+			name: "block with 16 bytes",
+
+			block:    []byte{0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34},
+			expected: []byte{0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10},
+		},
+		{
+			name: "block with 4 bytes",
+
+			block:    []byte{0x32, 0x43, 0xf6, 0xa8},
+			expected: []byte{0x32, 0x43, 0xf6, 0xa8, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			output := padding(test.block)
+			if !slices.Equal(output, test.expected) {
+				fmt.Printf("Got     : %02x\n", output)
+				fmt.Printf("Expected: %02x\n", test.expected)
+				t.Fail()
+			}
+		})
+	}
+}
+
+func TestEncryptionECB(t *testing.T) {
+	tests := []struct {
+		name string
+
+		input string
+		key   string
+
+		expected string
+	}{
+		{
+			name:     "Example",
+			input:    "Let's test if this is working!",
+			key:      "128bitsforkeysss",
+			expected: "a922ddf330c834f6b705ff9c762841ecd6201d058f9b8c9186d6dd7624d3cd20",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			key := key.NewKey([16]byte([]byte(test.key)))
+			aes := NewAES(key)
+			output := aes.EncryptECB([]byte(test.input))
+			h := hex.EncodeToString(output)
+			if h != test.expected {
+				fmt.Printf("Got     : %s\n", h)
+				fmt.Printf("Expected: %s\n", test.expected)
+				t.Fail()
+			}
+		})
+	}
 }

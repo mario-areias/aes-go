@@ -58,7 +58,69 @@ func (a *AES) nextRound() {
 	a.currentRound++
 }
 
+func (a *AES) EncryptECB(plainText []byte) []byte {
+	blocks := split(plainText)
+	last := blocks[len(blocks)-1]
+	paddedLast := padding(last)
+
+	if len(paddedLast) == 16 {
+		blocks[len(blocks)-1] = paddedLast
+	} else if len(paddedLast) == 32 {
+		b := split(paddedLast)
+
+		blocks[len(blocks)-1] = b[0]
+		blocks = append(blocks, b[1])
+	}
+
+	r := make([]byte, 0)
+	for _, block := range blocks {
+		cipherBlock := a.EncryptBlock([16]byte(block))
+		c := convertMatrixToArray(cipherBlock)
+		s := c[:]
+		r = append(r, s...)
+	}
+
+	return r
+}
+
+func split(plainText []byte) [][]byte {
+	n := 16
+	l := len(plainText)
+	var blocks [][]byte
+	for i := 0; i < l; i += n {
+		end := i + n
+		if end > l {
+			end = l
+		}
+		blocks = append(blocks, plainText[i:end])
+	}
+	return blocks
+}
+
+func padding(block []byte) []byte {
+	n := 16
+	l := len(block)
+
+	if l == n {
+		paddigBlock := []byte{0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10}
+		block = append(block, paddigBlock...)
+		return block
+	}
+
+	r := n - l
+	s := make([]byte, 16)
+	copy(s, block)
+
+	for i := l; i < n; i++ {
+		s[i] = byte(r)
+	}
+
+	return s
+}
+
 func (a *AES) EncryptBlock(b [16]byte) [4][4]byte {
+	a.currentRound = 0
+
 	block := convertArrayToMatrix(b)
 
 	for j := 0; j <= a.rounds; j++ {
