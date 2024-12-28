@@ -29,6 +29,7 @@ type AES struct {
 func (a *AES) generateNewRoundKey() {
 	if a.currentRound == 0 {
 		a.currentRoundKey = a.key.GetBytes()
+		// fmt.Printf("Current round key: %02x\n", a.currentRoundKey)
 		return
 	}
 
@@ -81,39 +82,38 @@ func (a *AES) Encrypt(b []byte) []byte {
 
 func (a *AES) encryptRound(state [4][4]byte) [4][4]byte {
 	key := convertArrayToMatrix([16]byte(a.currentRoundKey))
+	// fmt.Printf("Key: %02x\n", key)
 
 	if a.currentRound == 0 {
-		return addRoundKey(state, key)
+		r := addRoundKey(state, key)
+		// fmt.Printf("Add round key rows: %02x\n", r)
+		return r
 	}
 
 	if a.currentRound < a.rounds {
 		r := subMatrix(state)
-		// fmt.Printf("SubMatrix: %02x", r)
-		// fmt.Println()
+		// fmt.Printf("SubMatrix: %02x\n", r)
 
 		r = shiftRows(r)
-		// fmt.Printf("Shift Rows: %02x", r)
-		// fmt.Println()
+		// fmt.Printf("Shift Rows: %02x\n", r)
 
 		r = mixColumns(r)
-		// fmt.Printf("Mix columns Rows: %02x", r)
-		// fmt.Println()
+		// fmt.Printf("Mix columns Rows: %02x\n", r)
 
 		r = addRoundKey(r, key)
+		// fmt.Printf("Add round key rows: %02x\n", r)
+
 		return r
 	}
 
 	r := subMatrix(state)
-	// fmt.Printf("SubMatrix: %02x", r)
-	// fmt.Println()
+	// fmt.Printf("SubMatrix: %02x\n", r)
 
 	r = shiftRows(r)
-	// fmt.Printf("Shift Rows: %02x", r)
-	// fmt.Println()
+	// fmt.Printf("Shift Rows: %02x\n", r)
 
 	r = addRoundKey(r, key)
-	// fmt.Printf("Add round key rows: %02x", r)
-	// fmt.Println()
+	// fmt.Printf("Add round key rows: %02x\n", r)
 
 	return r
 }
