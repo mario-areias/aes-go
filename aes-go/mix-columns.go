@@ -1,6 +1,7 @@
 package aesgo
 
 // gmul performs Galois Field (256) multiplication of two bytes.
+// implementation taking from wikipedia
 func gmul(a, b byte) byte {
 	var p byte = 0
 
