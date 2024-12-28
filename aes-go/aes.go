@@ -42,7 +42,7 @@ func (a *AES) generateNewRoundKey() {
 
 	t := rotWord([4]byte(w3))
 	t = subWord([4]byte(t))
-	t = rcon(a.currentRound-1, [4]byte(t))
+	t = rcon(a.currentRound, [4]byte(t))
 
 	w4 := xor([4]byte(w0), [4]byte(t))
 	w5 := xor([4]byte(w4), [4]byte(w1))
@@ -174,7 +174,7 @@ func subWord(word [4]byte) []byte {
 }
 
 func rcon(round int, word [4]byte) []byte {
-	r := rconTable[round]
+	r := rconTable[round-1] // this is to avoid overflows
 	return xor(word, r)
 }
 
