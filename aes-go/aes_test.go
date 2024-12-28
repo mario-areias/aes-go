@@ -56,16 +56,10 @@ func TestEncrypt(t *testing.T) {
 			key := key.NewKey(test.material)
 			aes := NewAES(key)
 
-			in := convertArrayToMatrix(test.input)
+			output := aes.EncryptBlock(test.input)
 
-			for i := 0; i <= 10; i++ {
-				aes.generateNewRoundKey()
-				in = aes.encryptRound(in)
-				aes.nextRound()
-			}
-
-			if in != test.expected {
-				fmt.Printf("Got: %02x\n", in)
+			if output != test.expected {
+				fmt.Printf("Got: %02x\n", output)
 				fmt.Printf("Expected: %02x\n", test.expected)
 
 				t.Fail()

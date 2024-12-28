@@ -58,26 +58,16 @@ func (a *AES) nextRound() {
 	a.currentRound++
 }
 
-func (a *AES) Encrypt(b []byte) []byte {
-	l := len(b)
-	blocks := l / 16
+func (a *AES) EncryptBlock(b [16]byte) [4][4]byte {
+	block := convertArrayToMatrix(b)
 
-	result := make([]byte, blocks*16)
-
-	for i := 0; i < blocks; i += 16 {
-		block := convertArrayToMatrix([16]byte(b[i : i+16]))
-
-		for j := 0; j <= a.rounds; j++ {
-			a.generateNewRoundKey()
-			block = a.encryptRound(block)
-			a.nextRound()
-		}
-
-		r := convertMatrixToArray(block)
-		result = append(result, r[:]...)
+	for j := 0; j <= a.rounds; j++ {
+		a.generateNewRoundKey()
+		block = a.encryptRound(block)
+		a.nextRound()
 	}
 
-	return result
+	return block
 }
 
 func (a *AES) encryptRound(state [4][4]byte) [4][4]byte {
@@ -90,27 +80,17 @@ func (a *AES) encryptRound(state [4][4]byte) [4][4]byte {
 		return r
 	}
 
-	if a.currentRound < a.rounds {
-		r := subMatrix(state)
-		// fmt.Printf("SubMatrix: %02x\n", r)
-
-		r = shiftRows(r)
-		// fmt.Printf("Shift Rows: %02x\n", r)
-
-		r = mixColumns(r)
-		// fmt.Printf("Mix columns Rows: %02x\n", r)
-
-		r = addRoundKey(r, key)
-		// fmt.Printf("Add round key rows: %02x\n", r)
-
-		return r
-	}
-
 	r := subMatrix(state)
 	// fmt.Printf("SubMatrix: %02x\n", r)
 
 	r = shiftRows(r)
 	// fmt.Printf("Shift Rows: %02x\n", r)
+
+	if a.currentRound < a.rounds {
+		// mix columns don't apply to the last round
+		r = mixColumns(r)
+		// fmt.Printf("Mix columns Rows: %02x\n", r)
+	}
 
 	r = addRoundKey(r, key)
 	// fmt.Printf("Add round key rows: %02x\n", r)
