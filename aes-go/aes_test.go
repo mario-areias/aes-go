@@ -7,7 +7,7 @@ import (
 	"github.com/mario-areias/aes-go/key"
 )
 
-func TestEncrypt(t *testing.T) {
+func TestEncryptBlock(t *testing.T) {
 	// This test is extracted from the FIPS 197 document
 	// https://csrc.nist.gov/files/pubs/fips/197/final/docs/fips-197.pdf
 	// Appendix B - Cipher Example
