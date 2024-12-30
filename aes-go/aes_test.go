@@ -147,6 +147,52 @@ func TestPadding(t *testing.T) {
 	}
 }
 
+func TestRemovePadding(t *testing.T) {
+	tests := []struct {
+		name  string
+		block []byte
+
+		expected []byte
+
+		error bool
+	}{
+		{
+			name: "simple test",
+
+			block:    []byte{0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x01},
+			expected: []byte{0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07},
+		},
+		{
+			name: "invalid padding",
+
+			block: []byte{0x32, 0x43, 0xf6, 0x06},
+
+			error: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			output, err := removePadding(test.block)
+
+			switch {
+			case test.error && err == nil:
+				t.Errorf("Expected error, got nil")
+				t.FailNow()
+			case !test.error && err != nil:
+				t.Errorf("Expected nil, got %v", err)
+				t.FailNow()
+			}
+
+			if !slices.Equal(output, test.expected) {
+				fmt.Printf("Got     : %02x\n", output)
+				fmt.Printf("Expected: %02x\n", test.expected)
+				t.Fail()
+			}
+		})
+	}
+}
+
 func TestEncryptionECB(t *testing.T) {
 	tests := []struct {
 		name string

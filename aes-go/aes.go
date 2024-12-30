@@ -1,6 +1,8 @@
 package aesgo
 
 import (
+	"errors"
+
 	"github.com/mario-areias/aes-go/key"
 )
 
@@ -106,25 +108,36 @@ func (a *AES) DecryptECB(plainText []byte) []byte {
 		r = append(r, s...)
 	}
 
-	return removePadding(r)
+	// ignoring error to make the code simpler
+	b, err := removePadding(r)
+	if err != nil {
+		panic(err)
+	}
+
+	return b
 }
 
-func removePadding(b []byte) []byte {
+func removePadding(b []byte) ([]byte, error) {
 	blocks := split(b)
 
 	last := blocks[len(blocks)-1]
 	p := b[len(b)-1]
 
-	for i := len(last) - int(p); i < len(last); i++ {
+	begin := len(last) - int(p)
+	if begin < 0 {
+		return nil, errors.New("Invalid padding")
+	}
+
+	for i := begin; i < len(last); i++ {
 		if last[i] != p {
-			panic("Invalid padding")
+			return nil, errors.New("Invalid padding")
 		}
 	}
 
 	last = last[:len(last)-int(p)]
 	blocks[len(blocks)-1] = last
 
-	return join(blocks)
+	return join(blocks), nil
 }
 
 func join(blocks [][]byte) []byte {
