@@ -73,7 +73,75 @@ func (a *AES) previousRound() {
 }
 
 func (a *AES) EncryptECB(plainText []byte) []byte {
+	blocks := createBlocks(plainText)
+
+	r := make([]byte, 0)
+	for _, block := range blocks {
+		cipherBlock := a.EncryptBlock([16]byte(block))
+		c := convertMatrixToArray(cipherBlock)
+		s := c[:]
+		r = append(r, s...)
+	}
+
+	return r
+}
+
+func (a *AES) EncryptCBC(plainText []byte, iv []byte) []byte {
+	blocks := createBlocks(plainText)
+
+	if len(iv) != 16 {
+		panic("IV must have 16 bytes")
+	}
+
+	r := make([]byte, 0)
+	previousCipherBlock := iv
+
+	for _, block := range blocks {
+		block = xorBytes(block, previousCipherBlock)
+		cipherBlock := a.EncryptBlock([16]byte(block))
+
+		c := convertMatrixToArray(cipherBlock)
+		s := c[:]
+		r = append(r, s...)
+
+		previousCipherBlock = s
+	}
+
+	return r
+}
+
+func (a *AES) DecryptCBC(plainText []byte, iv []byte) []byte {
 	blocks := split(plainText)
+
+	if len(iv) != 16 {
+		panic("IV must have 16 bytes")
+	}
+
+	r := make([]byte, 0)
+	previousCipherBlock := iv
+
+	for _, block := range blocks {
+		cipherBlock := a.DecryptBlock([16]byte(block))
+		c := convertMatrixToArray(cipherBlock)
+		s := c[:]
+
+		s = xorBytes(s, previousCipherBlock)
+		r = append(r, s...)
+
+		previousCipherBlock = block
+	}
+
+	// ignoring error to make the code simpler
+	b, err := removePadding(r)
+	if err != nil {
+		panic(err)
+	}
+
+	return b
+}
+
+func createBlocks(b []byte) [][]byte {
+	blocks := split(b)
 	last := blocks[len(blocks)-1]
 	paddedLast := padding(last)
 
@@ -86,15 +154,7 @@ func (a *AES) EncryptECB(plainText []byte) []byte {
 		blocks = append(blocks, b[1])
 	}
 
-	r := make([]byte, 0)
-	for _, block := range blocks {
-		cipherBlock := a.EncryptBlock([16]byte(block))
-		c := convertMatrixToArray(cipherBlock)
-		s := c[:]
-		r = append(r, s...)
-	}
-
-	return r
+	return blocks
 }
 
 func (a *AES) DecryptECB(plainText []byte) []byte {
@@ -356,6 +416,18 @@ func rcon(round int, word [4]byte) []byte {
 func xor(a, b [4]byte) []byte {
 	x := make([]byte, 4)
 	for i := 0; i < 4; i++ {
+		x[i] = a[i] ^ b[i]
+	}
+	return x
+}
+
+func xorBytes(a, b []byte) []byte {
+	if len(a) != len(b) {
+		panic("Different lengths")
+	}
+
+	x := make([]byte, len(a))
+	for i := 0; i < len(a); i++ {
 		x[i] = a[i] ^ b[i]
 	}
 	return x

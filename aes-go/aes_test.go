@@ -268,3 +268,84 @@ func TestEncryptionECB(t *testing.T) {
 		})
 	}
 }
+
+func TestEncryptionCBC(t *testing.T) {
+	tests := []struct {
+		name string
+
+		encryption bool
+
+		input string
+		key   string
+		iv    string
+
+		expected string
+	}{
+		{
+			name: "Simple encryption test",
+
+			encryption: true,
+
+			input:    "Let's test if this is working!",
+			key:      "128bitsforkeysss",
+			iv:       "9876543210abcdef",
+			expected: "63163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90f",
+		},
+		{
+			name: "Simple decryption test",
+
+			encryption: false,
+
+			input:    "63163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90f",
+			key:      "128bitsforkeysss",
+			iv:       "9876543210abcdef",
+			expected: "Let's test if this is working!",
+		},
+		{
+			name: "Example encryption with exactly 3 blocks of 16 bytes",
+
+			encryption: true,
+
+			input:    "The quick brown fox jumps over the lazy dog 1234",
+			key:      "128bitsforkeysss",
+			iv:       "9876543210abcdef",
+			expected: "335a1adbd467c9182720ab33360ee5e201255e782f3fa328a390f8d74f1705f67267ae74c5c6c34793a421909c66609d88dfc28eb5f6b8de63bff5662fe3af2d",
+		},
+		{
+			name: "Example decryption with exactly 3 blocks of 16 bytes",
+
+			encryption: false,
+
+			input:    "335a1adbd467c9182720ab33360ee5e201255e782f3fa328a390f8d74f1705f67267ae74c5c6c34793a421909c66609d88dfc28eb5f6b8de63bff5662fe3af2d",
+			key:      "128bitsforkeysss",
+			iv:       "9876543210abcdef",
+			expected: "The quick brown fox jumps over the lazy dog 1234",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			key := key.NewKey([16]byte([]byte(test.key)))
+			aes := NewAES(key)
+
+			var output []byte
+			var result string
+
+			if test.encryption {
+				output = aes.EncryptCBC([]byte(test.input), []byte(test.iv))
+				result = hex.EncodeToString(output)
+			} else {
+				b := make([]byte, len(test.input)/2)
+				hex.Decode(b, []byte(test.input))
+				output = aes.DecryptCBC(b, []byte(test.iv))
+				result = string(output)
+			}
+
+			if result != test.expected {
+				fmt.Printf("Got     : %s\n", result)
+				fmt.Printf("Expected: %s\n", test.expected)
+				t.Fail()
+			}
+		})
+	}
+}
