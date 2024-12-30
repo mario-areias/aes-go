@@ -115,10 +115,16 @@ func TestEncryptionECB(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "Example",
+			name:     "Simple test",
 			input:    "Let's test if this is working!",
 			key:      "128bitsforkeysss",
 			expected: "a922ddf330c834f6b705ff9c762841ecd6201d058f9b8c9186d6dd7624d3cd20",
+		},
+		{
+			name:     "Example with exactly 3 blocks of 16 bytes",
+			input:    "The quick brown fox jumps over the lazy dog 1234",
+			key:      "128bitsforkeysss",
+			expected: "e6a120617fd61acd2f674683e668faf80de7195d49c076d0b6e4c6112a90095c7693de53e643d4c013c897d0f6cee6f8966128de2bef1fe7b381b11d7b38bf1f",
 		},
 	}
 
