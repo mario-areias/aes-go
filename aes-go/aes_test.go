@@ -151,22 +151,48 @@ func TestEncryptionECB(t *testing.T) {
 	tests := []struct {
 		name string
 
+		encryption bool
+
 		input string
 		key   string
 
 		expected string
 	}{
 		{
-			name:     "Simple test",
+			name: "Simple encryption test",
+
+			encryption: true,
+
 			input:    "Let's test if this is working!",
 			key:      "128bitsforkeysss",
 			expected: "a922ddf330c834f6b705ff9c762841ecd6201d058f9b8c9186d6dd7624d3cd20",
 		},
 		{
-			name:     "Example with exactly 3 blocks of 16 bytes",
+			name: "Simple decryption test",
+
+			encryption: false,
+
+			input:    "a922ddf330c834f6b705ff9c762841ecd6201d058f9b8c9186d6dd7624d3cd20",
+			key:      "128bitsforkeysss",
+			expected: "Let's test if this is working!",
+		},
+		{
+			name: "Example encryption with exactly 3 blocks of 16 bytes",
+
+			encryption: true,
+
 			input:    "The quick brown fox jumps over the lazy dog 1234",
 			key:      "128bitsforkeysss",
 			expected: "e6a120617fd61acd2f674683e668faf80de7195d49c076d0b6e4c6112a90095c7693de53e643d4c013c897d0f6cee6f8966128de2bef1fe7b381b11d7b38bf1f",
+		},
+		{
+			name: "Example decryption with exactly 3 blocks of 16 bytes",
+
+			encryption: false,
+
+			input:    "e6a120617fd61acd2f674683e668faf80de7195d49c076d0b6e4c6112a90095c7693de53e643d4c013c897d0f6cee6f8966128de2bef1fe7b381b11d7b38bf1f",
+			key:      "128bitsforkeysss",
+			expected: "The quick brown fox jumps over the lazy dog 1234",
 		},
 	}
 
@@ -174,10 +200,22 @@ func TestEncryptionECB(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			key := key.NewKey([16]byte([]byte(test.key)))
 			aes := NewAES(key)
-			output := aes.EncryptECB([]byte(test.input))
-			h := hex.EncodeToString(output)
-			if h != test.expected {
-				fmt.Printf("Got     : %s\n", h)
+
+			var output []byte
+			var result string
+
+			if test.encryption {
+				output = aes.EncryptECB([]byte(test.input))
+				result = hex.EncodeToString(output)
+			} else {
+				b := make([]byte, len(test.input)/2)
+				hex.Decode(b, []byte(test.input))
+				output = aes.DecryptECB(b)
+				result = string(output)
+			}
+
+			if result != test.expected {
+				fmt.Printf("Got     : %s\n", result)
 				fmt.Printf("Expected: %s\n", test.expected)
 				t.Fail()
 			}

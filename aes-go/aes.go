@@ -95,6 +95,46 @@ func (a *AES) EncryptECB(plainText []byte) []byte {
 	return r
 }
 
+func (a *AES) DecryptECB(plainText []byte) []byte {
+	blocks := split(plainText)
+
+	r := make([]byte, 0)
+	for _, block := range blocks {
+		cipherBlock := a.DecryptBlock([16]byte(block))
+		c := convertMatrixToArray(cipherBlock)
+		s := c[:]
+		r = append(r, s...)
+	}
+
+	return removePadding(r)
+}
+
+func removePadding(b []byte) []byte {
+	blocks := split(b)
+
+	last := blocks[len(blocks)-1]
+	p := b[len(b)-1]
+
+	for i := len(last) - int(p); i < len(last); i++ {
+		if last[i] != p {
+			panic("Invalid padding")
+		}
+	}
+
+	last = last[:len(last)-int(p)]
+	blocks[len(blocks)-1] = last
+
+	return join(blocks)
+}
+
+func join(blocks [][]byte) []byte {
+	var r []byte
+	for _, block := range blocks {
+		r = append(r, block...)
+	}
+	return r
+}
+
 func split(plainText []byte) [][]byte {
 	n := 16
 	l := len(plainText)
