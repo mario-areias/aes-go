@@ -36,3 +36,18 @@ func mixColumns(s [4][4]byte) [4][4]byte {
 	// Copy the results back to the original state matrix
 	return ss
 }
+
+func invMixColumns(s [4][4]byte) [4][4]byte {
+	// Temporary matrix to hold the results
+	var ss [4][4]byte
+
+	for c := 0; c < 4; c++ {
+		ss[0][c] = gmul(0x0e, s[0][c]) ^ gmul(0x0b, s[1][c]) ^ gmul(0x0d, s[2][c]) ^ gmul(0x09, s[3][c])
+		ss[1][c] = gmul(0x09, s[0][c]) ^ gmul(0x0e, s[1][c]) ^ gmul(0x0b, s[2][c]) ^ gmul(0x0d, s[3][c])
+		ss[2][c] = gmul(0x0d, s[0][c]) ^ gmul(0x09, s[1][c]) ^ gmul(0x0e, s[2][c]) ^ gmul(0x0b, s[3][c])
+		ss[3][c] = gmul(0x0b, s[0][c]) ^ gmul(0x0d, s[1][c]) ^ gmul(0x09, s[2][c]) ^ gmul(0x0e, s[3][c])
+	}
+
+	// Copy the results back to the original state matrix
+	return ss
+}

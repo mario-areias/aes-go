@@ -12,7 +12,7 @@ func NewAES(key key.Key) AES {
 	s := key.Len()
 	switch s {
 	case 128 / 8:
-		return AES{key, 10, 0, nil}
+		return AES{key, 10, 0, make([][16]byte, 11)}
 	default:
 		panic("Unsupported key size")
 	}
@@ -22,18 +22,26 @@ type AES struct {
 	key    key.Key
 	rounds int
 
-	currentRound    int
-	currentRoundKey []byte
+	currentRound int
+	roundKeys    [][16]byte
 }
 
-func (a *AES) generateNewRoundKey() {
+func (a *AES) generateAllKeys() {
+	a.currentRound = 0
+
+	for i := 0; i <= a.rounds; i++ {
+		k := a.generateNewRoundKey()
+		a.roundKeys[i] = k
+		a.nextRound()
+	}
+}
+
+func (a *AES) generateNewRoundKey() [16]byte {
 	if a.currentRound == 0 {
-		a.currentRoundKey = a.key.GetBytes()
-		// fmt.Printf("Current round key: %02x\n", a.currentRoundKey)
-		return
+		return [16]byte(a.key.GetBytes())
 	}
 
-	previousRoundKey := a.currentRoundKey
+	previousRoundKey := a.roundKeys[a.currentRound-1]
 
 	w0 := previousRoundKey[0:4]
 	w1 := previousRoundKey[4:8]
@@ -51,11 +59,15 @@ func (a *AES) generateNewRoundKey() {
 
 	roundKey := append(w4, append(w5, append(w6, w7...)...)...)
 
-	a.currentRoundKey = roundKey
+	return [16]byte(roundKey)
 }
 
 func (a *AES) nextRound() {
 	a.currentRound++
+}
+
+func (a *AES) previousRound() {
+	a.currentRound--
 }
 
 func (a *AES) EncryptECB(plainText []byte) []byte {
@@ -119,12 +131,12 @@ func padding(block []byte) []byte {
 }
 
 func (a *AES) EncryptBlock(b [16]byte) [4][4]byte {
+	a.generateAllKeys()
 	a.currentRound = 0
 
 	block := convertArrayToMatrix(b)
 
 	for j := 0; j <= a.rounds; j++ {
-		a.generateNewRoundKey()
 		block = a.encryptRound(block)
 		a.nextRound()
 	}
@@ -132,30 +144,57 @@ func (a *AES) EncryptBlock(b [16]byte) [4][4]byte {
 	return block
 }
 
+func (a *AES) DecryptBlock(b [16]byte) [4][4]byte {
+	a.generateAllKeys()
+	a.currentRound = a.rounds
+
+	block := convertArrayToMatrix(b)
+
+	for j := a.rounds; j >= 0; j-- {
+		block = a.decryptRound(block)
+		a.previousRound()
+	}
+
+	return block
+}
+
 func (a *AES) encryptRound(state [4][4]byte) [4][4]byte {
-	key := convertArrayToMatrix([16]byte(a.currentRoundKey))
-	// fmt.Printf("Key: %02x\n", key)
+	key := convertArrayToMatrix(a.roundKeys[a.currentRound])
 
 	if a.currentRound == 0 {
 		r := addRoundKey(state, key)
-		// fmt.Printf("Add round key rows: %02x\n", r)
 		return r
 	}
 
 	r := subMatrix(state)
-	// fmt.Printf("SubMatrix: %02x\n", r)
-
 	r = shiftRows(r)
-	// fmt.Printf("Shift Rows: %02x\n", r)
 
 	if a.currentRound < a.rounds {
 		// mix columns don't apply to the last round
 		r = mixColumns(r)
-		// fmt.Printf("Mix columns Rows: %02x\n", r)
 	}
 
 	r = addRoundKey(r, key)
-	// fmt.Printf("Add round key rows: %02x\n", r)
+
+	return r
+}
+
+func (a *AES) decryptRound(state [4][4]byte) [4][4]byte {
+	key := convertArrayToMatrix(a.roundKeys[a.currentRound])
+
+	if a.currentRound == a.rounds {
+		r := addRoundKey(state, key)
+		return r
+	}
+
+	r := invShiftRows(state)
+	r = invSubMatrix(r)
+	r = addRoundKey(r, key)
+
+	if a.currentRound > 0 {
+		// invmix columns don't apply to the last round
+		r = invMixColumns(r)
+	}
 
 	return r
 }
@@ -174,6 +213,16 @@ func subMatrix(word [4][4]byte) [4][4]byte {
 	return s
 }
 
+func invSubMatrix(word [4][4]byte) [4][4]byte {
+	var s [4][4]byte
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			s[i][j] = invSBox()[word[i][j]]
+		}
+	}
+	return s
+}
+
 func shiftRows(state [4][4]byte) [4][4]byte {
 	var s [4][4]byte
 	s[0] = state[0]
@@ -181,6 +230,17 @@ func shiftRows(state [4][4]byte) [4][4]byte {
 	s[1] = [4]byte{state[1][1], state[1][2], state[1][3], state[1][0]}
 	s[2] = [4]byte{state[2][2], state[2][3], state[2][0], state[2][1]}
 	s[3] = [4]byte{state[3][3], state[3][0], state[3][1], state[3][2]}
+
+	return s
+}
+
+func invShiftRows(state [4][4]byte) [4][4]byte {
+	var s [4][4]byte
+	s[0] = state[0]
+
+	s[1] = [4]byte{state[1][3], state[1][0], state[1][1], state[1][2]}
+	s[2] = [4]byte{state[2][2], state[2][3], state[2][0], state[2][1]}
+	s[3] = [4]byte{state[3][1], state[3][2], state[3][3], state[3][0]}
 
 	return s
 }
