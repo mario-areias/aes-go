@@ -110,7 +110,7 @@ func (a *AES) EncryptCBC(plainText []byte, iv []byte) []byte {
 	return r
 }
 
-func (a *AES) DecryptCBC(plainText []byte, iv []byte) []byte {
+func (a *AES) DecryptCBC(plainText []byte, iv []byte) ([]byte, error) {
 	blocks := split(plainText)
 
 	if len(iv) != 16 {
@@ -134,10 +134,10 @@ func (a *AES) DecryptCBC(plainText []byte, iv []byte) []byte {
 	// ignoring error to make the code simpler
 	b, err := removePadding(r)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return b
+	return b, nil
 }
 
 func createBlocks(b []byte) [][]byte {

@@ -274,6 +274,7 @@ func TestEncryptionCBC(t *testing.T) {
 		name string
 
 		encryption bool
+		error      bool
 
 		input string
 		key   string
@@ -300,6 +301,17 @@ func TestEncryptionCBC(t *testing.T) {
 			key:      "128bitsforkeysss",
 			iv:       "9876543210abcdef",
 			expected: "Let's test if this is working!",
+		},
+		{
+			name: "Padding error",
+
+			encryption: false,
+			error:      true,
+
+			// changed last bit from 0f to 0e to make the padding invalid
+			input: "63163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90e",
+			key:   "128bitsforkeysss",
+			iv:    "9876543210abcdef",
 		},
 		{
 			name: "Example encryption with exactly 3 blocks of 16 bytes",
@@ -337,7 +349,17 @@ func TestEncryptionCBC(t *testing.T) {
 			} else {
 				b := make([]byte, len(test.input)/2)
 				hex.Decode(b, []byte(test.input))
-				output = aes.DecryptCBC(b, []byte(test.iv))
+				output, err := aes.DecryptCBC(b, []byte(test.iv))
+
+				switch {
+				case test.error && err == nil:
+					t.Errorf("Expected error, got nil")
+					t.FailNow()
+				case !test.error && err != nil:
+					t.Errorf("Expected nil, got %v", err)
+					t.FailNow()
+				}
+
 				result = string(output)
 			}
 
