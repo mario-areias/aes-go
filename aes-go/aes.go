@@ -110,8 +110,8 @@ func (a *AES) EncryptCBC(plainText []byte, iv []byte) []byte {
 	return r
 }
 
-func (a *AES) DecryptCBC(plainText []byte, iv []byte) ([]byte, error) {
-	blocks := split(plainText)
+func (a *AES) DecryptCBC(encrypted []byte, iv []byte) ([]byte, error) {
+	blocks := split(encrypted)
 
 	if len(iv) != 16 {
 		panic("IV must have 16 bytes")
@@ -131,8 +131,7 @@ func (a *AES) DecryptCBC(plainText []byte, iv []byte) ([]byte, error) {
 		previousCipherBlock = block
 	}
 
-	// ignoring error to make the code simpler
-	b, err := removePadding(r)
+	b, err := RemovePadding(r)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +168,7 @@ func (a *AES) DecryptECB(plainText []byte) []byte {
 	}
 
 	// ignoring error to make the code simpler
-	b, err := removePadding(r)
+	b, err := RemovePadding(r)
 	if err != nil {
 		panic(err)
 	}
@@ -177,11 +176,17 @@ func (a *AES) DecryptECB(plainText []byte) []byte {
 	return b
 }
 
-func removePadding(b []byte) ([]byte, error) {
+func RemovePadding(b []byte) ([]byte, error) {
 	blocks := split(b)
 
 	last := blocks[len(blocks)-1]
 	p := b[len(b)-1]
+
+	// padding byte must be between 1 and 16
+	// 0 is invalid because it would mean no padding which means the padding byte should be 16
+	if p == 0 || int(p) > len(last) {
+		return nil, errors.New("Invalid padding")
+	}
 
 	begin := len(last) - int(p)
 	if begin < 0 {
