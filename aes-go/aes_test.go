@@ -263,7 +263,7 @@ func TestEncryptionECB(t *testing.T) {
 			} else {
 				b := make([]byte, len(test.input)/2)
 				hex.Decode(b, []byte(test.input))
-				output = aes.DecryptECB(b)
+				output = aes.decryptECB(b)
 				result = string(output)
 			}
 

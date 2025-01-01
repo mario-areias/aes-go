@@ -93,7 +93,7 @@ func (a *AES) Encrypt(mode Mode, plaintext []byte) ([]byte, error) {
 func (a *AES) Decrypt(mode Mode, encrypted []byte) ([]byte, error) {
 	switch mode {
 	case ECB:
-		return a.DecryptECB(encrypted), nil
+		return a.decryptECB(encrypted), nil
 	case CBC:
 		if len(encrypted) < 16*2 {
 			return nil, errors.New("Invalid encrypted text. Must have at least 2 blocks: iv + encrypted block")
@@ -188,7 +188,7 @@ func createBlocks(b []byte) [][]byte {
 	return blocks
 }
 
-func (a *AES) DecryptECB(encrypted []byte) []byte {
+func (a *AES) decryptECB(encrypted []byte) []byte {
 	blocks := split(encrypted)
 
 	r := make([]byte, 0)
