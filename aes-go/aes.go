@@ -10,7 +10,14 @@ const (
 	keyBlock = 4 // 4 bytes or 32 bits
 )
 
-func NewAES(key key.Key) AES {
+type Mode int
+
+const (
+	ECB = iota
+	CBC
+)
+
+func New(key key.Key) AES {
 	s := key.Len()
 	switch s {
 	case 128 / 8:
@@ -72,7 +79,32 @@ func (a *AES) previousRound() {
 	a.currentRound--
 }
 
-func (a *AES) EncryptECB(plainText []byte) []byte {
+func (a *AES) Encrypt(mode Mode, plaintext []byte) ([]byte, error) {
+	switch mode {
+	case ECB:
+		return a.encryptECB(plaintext), nil
+	case CBC:
+		return a.encryptCBC(plaintext, key.Bit128().GetBytes()), nil
+	}
+
+	return nil, errors.New("Invalid mode")
+}
+
+func (a *AES) Decrypt(mode Mode, encrypted []byte) ([]byte, error) {
+	switch mode {
+	case ECB:
+		return a.DecryptECB(encrypted), nil
+	case CBC:
+		if len(encrypted) < 16*2 {
+			return nil, errors.New("Invalid encrypted text. Must have at least 2 blocks: iv + encrypted block")
+		}
+		return a.decryptCBC(encrypted[16:], encrypted[:16])
+	}
+
+	return nil, errors.New("Invalid mode")
+}
+
+func (a *AES) encryptECB(plainText []byte) []byte {
 	blocks := createBlocks(plainText)
 
 	r := make([]byte, 0)
@@ -86,7 +118,7 @@ func (a *AES) EncryptECB(plainText []byte) []byte {
 	return r
 }
 
-func (a *AES) EncryptCBC(plainText []byte, iv []byte) []byte {
+func (a *AES) encryptCBC(plainText []byte, iv []byte) []byte {
 	blocks := createBlocks(plainText)
 
 	if len(iv) != 16 {
@@ -107,10 +139,10 @@ func (a *AES) EncryptCBC(plainText []byte, iv []byte) []byte {
 		previousCipherBlock = s
 	}
 
-	return r
+	return append(iv, r...)
 }
 
-func (a *AES) DecryptCBC(encrypted []byte, iv []byte) ([]byte, error) {
+func (a *AES) decryptCBC(encrypted []byte, iv []byte) ([]byte, error) {
 	blocks := split(encrypted)
 
 	if len(iv) != 16 {

@@ -10,10 +10,9 @@ import (
 
 func TestPaddingOracle(t *testing.T) {
 	k := key.NewKey([16]byte([]byte("128bitsforkeysss")))
-	iv := []byte("9876543210abcdef")
 
-	oracle := Oracle{key: k, iv: iv}
-	aes := aesgo.NewAES(k)
+	oracle := Oracle{key: k}
+	aes := aesgo.New(k)
 
 	tests := []struct {
 		name string
@@ -28,9 +27,13 @@ func TestPaddingOracle(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			encrypted := aes.EncryptCBC([]byte(test.input), iv)
+			encrypted, err := aes.Encrypt(aesgo.CBC, []byte(test.input))
+			if err != nil {
+				t.Errorf("Error encrypting: %s", err)
+			}
+
 			decrypted := PaddingOracle(oracle, encrypted)
-			decrypted, err := aesgo.RemovePadding(decrypted)
+			decrypted, err = aesgo.RemovePadding(decrypted)
 			if err != nil {
 				t.Errorf("Error removing padding: %s", err)
 			}

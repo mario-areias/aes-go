@@ -10,29 +10,25 @@ import (
 // For that reason the Oracle has a decrypt method that only returns an error to the caller.
 type Oracle struct {
 	key key.Key
-	iv  []byte
 }
 
 func (o *Oracle) Decrypt(encrypted []byte) error {
-	aes := aesgo.NewAES(o.key)
+	aes := aesgo.New(o.key)
 	// ignoring decrypted output because the caller shouldn't have access to it
-	_, err := aes.DecryptCBC(encrypted, o.iv)
+	_, err := aes.Decrypt(aesgo.CBC, encrypted)
 	return err
 }
 
 func PaddingOracle(oracle Oracle, encrypted []byte) []byte {
+	// encrypted is the IV + the cyphertext. So the last first block is always the IV
 	decrypted := make([]byte, len(encrypted))
 	dec := make([]byte, 16)
 
 	blocks := split(encrypted)
 
-	for i := len(blocks) - 1; i >= 0; i-- {
+	for i := len(blocks) - 1; i >= 1; i-- {
 		last := blocks[i]
-		prev := oracle.iv
-
-		if i > 0 {
-			prev = blocks[i-1]
-		}
+		prev := blocks[i-1]
 
 		dec = make([]byte, 16)
 
@@ -75,7 +71,7 @@ func PaddingOracle(oracle Oracle, encrypted []byte) []byte {
 
 	}
 
-	return decrypted
+	return decrypted[16:] // remove IV from decryption block
 }
 
 // This function finds the padding byte by trying all possible values.

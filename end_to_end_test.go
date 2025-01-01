@@ -13,15 +13,18 @@ import (
 
 func TestCBCStd(t *testing.T) {
 	k := key.Bit128()
-	iv := key.Bit128().GetBytes()
 
 	aes := aesgo.New(k)
 
 	plaintext := []byte("Let's test if this is working!")
 
 	// encrypt with our implementation and decrypt with std
-	cipher := aes.EncryptCBC(plaintext, iv)
-	decrypted, err := stdDecrypt(cipher, k.GetBytes(), iv)
+	cipher, err := aes.Encrypt(aesgo.CBC, plaintext)
+	if err != nil {
+		t.Errorf("Error encrypting: %s", err)
+	}
+
+	decrypted, err := stdDecrypt(cipher[16:], k.GetBytes(), cipher[:16])
 	if err != nil {
 		t.Errorf("Error decrypting: %s", err)
 	}
@@ -31,11 +34,13 @@ func TestCBCStd(t *testing.T) {
 	}
 
 	// encrypt with std and decrypt with our implementation
+	iv := key.Bit128().GetBytes()
 	encrypted, err := stdEncrypt(plaintext, k.GetBytes(), iv)
 	if err != nil {
 		t.Errorf("Error encrypting: %s", err)
 	}
-	decrypted, err = aes.DecryptCBC(encrypted, iv)
+
+	decrypted, err = aes.Decrypt(aesgo.CBC, encrypted)
 	if err != nil {
 		t.Errorf("Error decrypting: %s", err)
 	}
@@ -51,7 +56,7 @@ func TestPaddingOracleAttackWithStdEncryption(t *testing.T) {
 
 	plaintext := []byte("Let's test if this attack works!!")
 
-	o := Oracle{key: k, iv: iv}
+	o := Oracle{key: k}
 
 	stdEncrypted, err := stdEncrypt(plaintext, k.GetBytes(), iv)
 	if err != nil {
@@ -88,7 +93,7 @@ func stdEncrypt(plainText, key, iv []byte) ([]byte, error) {
 	mode.CryptBlocks(cipherText, plainText)
 
 	// Prepend the IV to the ciphertext for use in decryption
-	return cipherText, nil
+	return append(iv, cipherText...), nil
 }
 
 // Function to stdDecrypt ciphertext using AES in CBC mode

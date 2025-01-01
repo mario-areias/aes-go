@@ -92,7 +92,7 @@ func TestEncryptBlock(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			key := key.NewKey(test.material)
-			aes := NewAES(key)
+			aes := New(key)
 
 			var output [4][4]byte
 
@@ -252,13 +252,13 @@ func TestEncryptionECB(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			key := key.NewKey([16]byte([]byte(test.key)))
-			aes := NewAES(key)
+			aes := New(key)
 
 			var output []byte
 			var result string
 
 			if test.encryption {
-				output = aes.EncryptECB([]byte(test.input))
+				output = aes.encryptECB([]byte(test.input))
 				result = hex.EncodeToString(output)
 			} else {
 				b := make([]byte, len(test.input)/2)
@@ -297,16 +297,15 @@ func TestEncryptionCBC(t *testing.T) {
 			input:    "Let's test if this is working!",
 			key:      "128bitsforkeysss",
 			iv:       "9876543210abcdef",
-			expected: "63163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90f",
+			expected: "3938373635343332313061626364656663163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90f",
 		},
 		{
 			name: "Simple decryption test",
 
 			encryption: false,
 
-			input:    "63163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90f",
+			input:    "3938373635343332313061626364656663163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90f",
 			key:      "128bitsforkeysss",
-			iv:       "9876543210abcdef",
 			expected: "Let's test if this is working!",
 		},
 		{
@@ -316,7 +315,7 @@ func TestEncryptionCBC(t *testing.T) {
 			error:      true,
 
 			// changed last bit from 0f to 0e to make the padding invalid
-			input: "63163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90e",
+			input: "3938373635343332313061626364656663163f78c264d799786c665a3858ef2020401081059a51efcb02e3585002f90e",
 			key:   "128bitsforkeysss",
 			iv:    "9876543210abcdef",
 		},
@@ -328,16 +327,15 @@ func TestEncryptionCBC(t *testing.T) {
 			input:    "The quick brown fox jumps over the lazy dog 1234",
 			key:      "128bitsforkeysss",
 			iv:       "9876543210abcdef",
-			expected: "335a1adbd467c9182720ab33360ee5e201255e782f3fa328a390f8d74f1705f67267ae74c5c6c34793a421909c66609d88dfc28eb5f6b8de63bff5662fe3af2d",
+			expected: "39383736353433323130616263646566335a1adbd467c9182720ab33360ee5e201255e782f3fa328a390f8d74f1705f67267ae74c5c6c34793a421909c66609d88dfc28eb5f6b8de63bff5662fe3af2d",
 		},
 		{
 			name: "Example decryption with exactly 3 blocks of 16 bytes",
 
 			encryption: false,
 
-			input:    "335a1adbd467c9182720ab33360ee5e201255e782f3fa328a390f8d74f1705f67267ae74c5c6c34793a421909c66609d88dfc28eb5f6b8de63bff5662fe3af2d",
+			input:    "39383736353433323130616263646566335a1adbd467c9182720ab33360ee5e201255e782f3fa328a390f8d74f1705f67267ae74c5c6c34793a421909c66609d88dfc28eb5f6b8de63bff5662fe3af2d",
 			key:      "128bitsforkeysss",
-			iv:       "9876543210abcdef",
 			expected: "The quick brown fox jumps over the lazy dog 1234",
 		},
 	}
@@ -345,18 +343,22 @@ func TestEncryptionCBC(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			key := key.NewKey([16]byte([]byte(test.key)))
-			aes := NewAES(key)
+			aes := New(key)
 
 			var output []byte
 			var result string
 
 			if test.encryption {
-				output = aes.EncryptCBC([]byte(test.input), []byte(test.iv))
+				output = aes.encryptCBC([]byte(test.input), []byte(test.iv))
 				result = hex.EncodeToString(output)
 			} else {
 				b := make([]byte, len(test.input)/2)
 				hex.Decode(b, []byte(test.input))
-				output, err := aes.DecryptCBC(b, []byte(test.iv))
+
+				iv := b[:16]
+				input := b[16:]
+
+				output, err := aes.decryptCBC(input, iv)
 
 				switch {
 				case test.error && err == nil:
