@@ -188,8 +188,8 @@ func createBlocks(b []byte) [][]byte {
 	return blocks
 }
 
-func (a *AES) DecryptECB(plainText []byte) []byte {
-	blocks := split(plainText)
+func (a *AES) DecryptECB(encrypted []byte) []byte {
+	blocks := split(encrypted)
 
 	r := make([]byte, 0)
 	for _, block := range blocks {
