@@ -300,6 +300,7 @@ func (a *AES) DecryptBlock(b [16]byte) [4][4]byte {
 
 	block := convertArrayToMatrix(b)
 
+	// Decrypting works in reverse order
 	for j := a.rounds; j >= 0; j-- {
 		block = a.decryptRound(block)
 		a.previousRound()
