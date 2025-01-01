@@ -20,7 +20,7 @@ func (o *Oracle) Decrypt(encrypted []byte) error {
 }
 
 func PaddingOracle(oracle Oracle, encrypted []byte) []byte {
-	// encrypted is the IV + the cyphertext. So the last first block is always the IV
+	// encrypted is the IV + the cyphertext. So the first block is always the IV
 	decrypted := make([]byte, len(encrypted))
 	dec := make([]byte, 16)
 
