@@ -63,7 +63,23 @@ func TestCTRStd(t *testing.T) {
 		t.Errorf("Error encrypting: %s", err)
 	}
 
-	decrypted, err := stdCTRDecrypt(cipher[16:], k.GetBytes(), cipher[:16])
+	decrypted, err := stdCTR(cipher[16:], k.GetBytes(), cipher[:16])
+	if err != nil {
+		t.Errorf("Error decrypting: %s", err)
+	}
+
+	if plaintextStr := string(plaintext); plaintextStr != string(decrypted) {
+		t.Errorf("Decrypted text does not match plaintext. Got: %s, Expected: %s", decrypted, plaintextStr)
+	}
+
+	// encrypt with std and decrypt with our own implementation
+	nonce := key.Bit128().GetBytes()
+	encrypted, err := stdCTR(plaintext, k.GetBytes(), nonce)
+	if err != nil {
+		t.Errorf("Error encrypting: %s", err)
+	}
+
+	decrypted, err = aes.Decrypt(aesgo.CTR, append(nonce, encrypted...))
 	if err != nil {
 		t.Errorf("Error decrypting: %s", err)
 	}
@@ -137,7 +153,7 @@ func stdCBCDecrypt(cipherText, key, iv []byte) ([]byte, error) {
 	return unpad(plainText)
 }
 
-func stdCTRDecrypt(cipherText, key, nonce []byte) ([]byte, error) {
+func stdCTR(bytes, key, nonce []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -147,8 +163,8 @@ func stdCTRDecrypt(cipherText, key, nonce []byte) ([]byte, error) {
 	mode := cipher.NewCTR(block, nonce)
 
 	// Decrypt the ciphertext
-	plainText := make([]byte, len(cipherText))
-	mode.XORKeyStream(plainText, cipherText)
+	plainText := make([]byte, len(bytes))
+	mode.XORKeyStream(plainText, bytes)
 
 	return plainText, nil
 }

@@ -98,6 +98,15 @@ func (a *AES) Decrypt(mode Mode, encrypted []byte) ([]byte, error) {
 			return nil, errors.New("Invalid encrypted text. Must have at least 2 blocks: iv + encrypted block")
 		}
 		return a.decryptCBC(encrypted[16:], encrypted[:16])
+	case CTR:
+		if len(encrypted) <= 16 {
+			return nil, errors.New("Invalid encrypted text. Must have at least 2 blocks: nonce + encrypted block")
+		}
+		// CTR encryption is the same as decryption
+		d := a.encryptCTR(encrypted[16:], encrypted[:16])
+
+		// nonce is the first 16 bytes, so remove it before returning
+		return d[16:], nil
 	}
 
 	return nil, errors.New("Invalid mode")
@@ -143,14 +152,9 @@ func (a *AES) encryptCBC(plainText []byte, iv []byte) []byte {
 
 func (a *AES) encryptCTR(plainText []byte, counter []byte) []byte {
 	blocks := split(plainText)
-	tmp := make([]byte, 16)
-	copy(tmp, counter)
 
-	if len(counter) != 16 {
-		panic("IV must have 16 bytes")
-	}
-
-	r := make([]byte, 0)
+	r := make([]byte, len(counter))
+	copy(r, counter)
 
 	for _, block := range blocks {
 		cipherBlock := a.EncryptBlock([16]byte(counter))
@@ -164,7 +168,7 @@ func (a *AES) encryptCTR(plainText []byte, counter []byte) []byte {
 		counter = addOneToByteSlice(counter)
 	}
 
-	return append(tmp, r...)
+	return r
 }
 
 // Careful that's a really weak implementation just for learning purposes.
