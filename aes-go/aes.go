@@ -6,15 +6,12 @@ import (
 	"github.com/mario-areias/aes-go/key"
 )
 
-const (
-	keyBlock = 4 // 4 bytes or 32 bits
-)
-
 type Mode int
 
 const (
 	ECB = iota
 	CBC
+	CTR
 )
 
 func New(key key.Key) AES {
@@ -85,6 +82,8 @@ func (a *AES) Encrypt(mode Mode, plaintext []byte) ([]byte, error) {
 		return a.encryptECB(plaintext), nil
 	case CBC:
 		return a.encryptCBC(plaintext, key.Bit128().GetBytes()), nil
+	case CTR:
+		return a.encryptCTR(plaintext, key.Bit128().GetBytes()), nil
 	}
 
 	return nil, errors.New("Invalid mode")
@@ -140,6 +139,48 @@ func (a *AES) encryptCBC(plainText []byte, iv []byte) []byte {
 	}
 
 	return append(iv, r...)
+}
+
+func (a *AES) encryptCTR(plainText []byte, counter []byte) []byte {
+	blocks := split(plainText)
+	tmp := make([]byte, 16)
+	copy(tmp, counter)
+
+	if len(counter) != 16 {
+		panic("IV must have 16 bytes")
+	}
+
+	r := make([]byte, 0)
+
+	for _, block := range blocks {
+		cipherBlock := a.EncryptBlock([16]byte(counter))
+
+		c := convertMatrixToArray(cipherBlock)
+		s := c[:]
+
+		xored := xorBytes(block, s)
+		r = append(r, xored...)
+
+		counter = addOneToByteSlice(counter)
+	}
+
+	return append(tmp, r...)
+}
+
+// Careful that's a really weak implementation just for learning purposes.
+// A proper implementation would check for overflows.
+// This NIST document explains in details how to do it on Appendix B.1:
+// https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
+func addOneToByteSlice(b []byte) []byte {
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] < 255 {
+			b[i]++
+			return b
+		}
+		b[i] = 0 // Reset current byte to 0 if it was 255
+	}
+	// If we overflowed all bytes, we need to add a new byte at the start
+	return append([]byte{1}, b...)
 }
 
 func (a *AES) decryptCBC(encrypted []byte, iv []byte) ([]byte, error) {
@@ -460,12 +501,13 @@ func xor(a, b [4]byte) []byte {
 }
 
 func xorBytes(a, b []byte) []byte {
-	if len(a) != len(b) {
-		panic("Different lengths")
+	minLen := len(a)
+	if len(b) < minLen {
+		minLen = len(b)
 	}
 
-	x := make([]byte, len(a))
-	for i := 0; i < len(a); i++ {
+	x := make([]byte, minLen)
+	for i := 0; i < minLen; i++ {
 		x[i] = a[i] ^ b[i]
 	}
 	return x

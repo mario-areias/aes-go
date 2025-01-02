@@ -24,7 +24,7 @@ func TestCBCStd(t *testing.T) {
 		t.Errorf("Error encrypting: %s", err)
 	}
 
-	decrypted, err := stdDecrypt(cipher[16:], k.GetBytes(), cipher[:16])
+	decrypted, err := stdCBCDecrypt(cipher[16:], k.GetBytes(), cipher[:16])
 	if err != nil {
 		t.Errorf("Error decrypting: %s", err)
 	}
@@ -35,12 +35,35 @@ func TestCBCStd(t *testing.T) {
 
 	// encrypt with std and decrypt with our implementation
 	iv := key.Bit128().GetBytes()
-	encrypted, err := stdEncrypt(plaintext, k.GetBytes(), iv)
+	encrypted, err := stdCBCEncrypt(plaintext, k.GetBytes(), iv)
 	if err != nil {
 		t.Errorf("Error encrypting: %s", err)
 	}
 
 	decrypted, err = aes.Decrypt(aesgo.CBC, encrypted)
+	if err != nil {
+		t.Errorf("Error decrypting: %s", err)
+	}
+
+	if plaintextStr := string(plaintext); plaintextStr != string(decrypted) {
+		t.Errorf("Decrypted text does not match plaintext. Got: %s, Expected: %s", decrypted, plaintextStr)
+	}
+}
+
+func TestCTRStd(t *testing.T) {
+	k := key.Bit128()
+
+	aes := aesgo.New(k)
+
+	plaintext := []byte("Let's test if this is working!")
+
+	// encrypt with our implementation and decrypt with std
+	cipher, err := aes.Encrypt(aesgo.CTR, plaintext)
+	if err != nil {
+		t.Errorf("Error encrypting: %s", err)
+	}
+
+	decrypted, err := stdCTRDecrypt(cipher[16:], k.GetBytes(), cipher[:16])
 	if err != nil {
 		t.Errorf("Error decrypting: %s", err)
 	}
@@ -58,7 +81,7 @@ func TestPaddingOracleAttackWithStdEncryption(t *testing.T) {
 
 	o := Oracle{key: k}
 
-	stdEncrypted, err := stdEncrypt(plaintext, k.GetBytes(), iv)
+	stdEncrypted, err := stdCBCEncrypt(plaintext, k.GetBytes(), iv)
 	if err != nil {
 		t.Errorf("Error encrypting: %s", err)
 	}
@@ -75,8 +98,8 @@ func TestPaddingOracleAttackWithStdEncryption(t *testing.T) {
 	}
 }
 
-// Function to stdEncrypt plaintext using AES in CBC mode
-func stdEncrypt(plainText, key, iv []byte) ([]byte, error) {
+// Function to stdCBCEncrypt plaintext using AES in CBC mode
+func stdCBCEncrypt(plainText, key, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -96,17 +119,13 @@ func stdEncrypt(plainText, key, iv []byte) ([]byte, error) {
 	return append(iv, cipherText...), nil
 }
 
-// Function to stdDecrypt ciphertext using AES in CBC mode
-func stdDecrypt(cipherText, key, iv []byte) ([]byte, error) {
+// Function to stdCBCDecrypt ciphertext using AES in CBC mode
+func stdCBCDecrypt(cipherText, key, iv []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	// Extract the IV from the beginning of the ciphertext
-	if len(cipherText) < aes.BlockSize {
-		return nil, fmt.Errorf("ciphertext too short")
-	}
 	// Create a new CBC decrypter
 	mode := cipher.NewCBCDecrypter(block, iv)
 
@@ -116,6 +135,22 @@ func stdDecrypt(cipherText, key, iv []byte) ([]byte, error) {
 
 	// Unpad the plaintext
 	return unpad(plainText)
+}
+
+func stdCTRDecrypt(cipherText, key, nonce []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new CTR decrypter
+	mode := cipher.NewCTR(block, nonce)
+
+	// Decrypt the ciphertext
+	plainText := make([]byte, len(cipherText))
+	mode.XORKeyStream(plainText, cipherText)
+
+	return plainText, nil
 }
 
 func pad(src []byte, blockSize int) []byte {
